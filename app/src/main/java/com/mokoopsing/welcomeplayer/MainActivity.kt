@@ -67,7 +67,7 @@ class MainActivity : Activity() {
                 buildList {
                     add(mediaSourceFactory.createMediaSource(MediaItem.fromUri(android.net.Uri.fromFile(file))))
                     if (index < files.lastIndex) {
-                        add(SilenceMediaSource(1_000_000L))
+                        add(SilenceMediaSource(500_000L))
                     }
                 }
             }
