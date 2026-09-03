@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -11,7 +12,7 @@ import java.util.Locale
 
 class UsbEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val device = intent.getParcelableExtraCompat<UsbDevice>(UsbDevice.EXTRA_DEVICE)
+        val device = intent.getParcelableExtraCompat<UsbDevice>(UsbManager.EXTRA_DEVICE)
         val details = buildString {
             append(timestampFormat.format(Date()))
             append(" action=").append(intent.action)
