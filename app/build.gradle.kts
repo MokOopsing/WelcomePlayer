@@ -7,6 +7,15 @@ android {
     namespace = "com.mokoopsing.welcomeplayer"
     compileSdk = 36
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     defaultConfig {
         applicationId = "com.mokoopsing.welcomeplayer"
         minSdk = 23
