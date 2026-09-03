@@ -3,16 +3,28 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val buildVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+val buildVersionName = project.findProperty("versionName") as String? ?: "1.0"
+
 android {
     namespace = "com.mokoopsing.welcomeplayer"
     compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
     defaultConfig {
         applicationId = "com.mokoopsing.welcomeplayer"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildVersionCode
+        versionName = buildVersionName
     }
 }
 
