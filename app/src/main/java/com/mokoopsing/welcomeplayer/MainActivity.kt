@@ -7,6 +7,8 @@ import android.os.Environment
 import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.SilenceMediaSource
 import java.io.File
 
 class MainActivity : Activity() {
@@ -60,7 +62,16 @@ class MainActivity : Activity() {
         }
 
         player = ExoPlayer.Builder(this).build().also { exo ->
-            exo.setMediaItems(files.map { MediaItem.fromUri(android.net.Uri.fromFile(it)) })
+            val mediaSourceFactory = DefaultMediaSourceFactory(this@MainActivity)
+            val mediaSources = files.flatMapIndexed { index, file ->
+                buildList {
+                    add(mediaSourceFactory.createMediaSource(MediaItem.fromUri(android.net.Uri.fromFile(file))))
+                    if (index < files.lastIndex) {
+                        add(SilenceMediaSource(1_000_000L))
+                    }
+                }
+            }
+            exo.setMediaSources(mediaSources)
             exo.prepare()
             exo.play()
             exo.addListener(object : androidx.media3.common.Player.Listener {
