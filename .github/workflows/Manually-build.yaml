@@ -50,7 +50,6 @@ jobs:
       - name: Build APK
         run: |
           ./gradlew :app:assembleRelease
-          ./gradlew :assembleReleasePlugins
 
       - name: Move app and plugins to one dir
         shell: bash
