@@ -43,10 +43,15 @@ class MainActivity : Activity() {
             text = "导出 USB 日志"
             setOnClickListener { exportLogs() }
         }
+        val clearButton = Button(this).apply {
+            text = "清理 USB 日志"
+            setOnClickListener { clearLogs() }
+        }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(statusTextView)
             addView(exportButton)
+            addView(clearButton)
             addView(
                 logScrollView,
                 LinearLayout.LayoutParams(
@@ -106,5 +111,10 @@ class MainActivity : Activity() {
             },
             "导出 USB 日志"
         ))
+    }
+
+    private fun clearLogs() {
+        deleteFile(UsbEventReceiver.LOG_FILE)
+        logTextView.text = "暂无 USB 连接事件"
     }
 }
