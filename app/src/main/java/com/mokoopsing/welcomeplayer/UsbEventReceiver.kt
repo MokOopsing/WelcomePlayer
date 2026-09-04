@@ -24,6 +24,8 @@ class UsbEventReceiver : BroadcastReceiver() {
                 append(" mtp=").append(intent.getBooleanExtra(EXTRA_MTP, false))
                 append(" ptp=").append(intent.getBooleanExtra(EXTRA_PTP, false))
                 append(" adb=").append(intent.getBooleanExtra(EXTRA_ADB, false))
+                append(" car=").append(intent.getBooleanExtra(EXTRA_CAR, false))
+                append(" compositeCarMtp=").append(intent.getBooleanExtra(EXTRA_CAR_MTP, false))
             } else if (accessory != null) {
                 append(" accessory=")
                 append("manufacturer=").append(accessory.manufacturer ?: "unknown")
@@ -46,8 +48,11 @@ class UsbEventReceiver : BroadcastReceiver() {
             }
             intent.extras?.keySet()?.sorted()?.forEach { key ->
                 if (key !in setOf(EXTRA_CONNECTED, EXTRA_CONFIGURED, EXTRA_MTP, EXTRA_PTP, EXTRA_ADB,
-                        UsbManager.EXTRA_DEVICE, UsbManager.EXTRA_ACCESSORY)) {
-                    append(" extra_").append(key).append("=").append(intent.extras?.get(key))
+                        EXTRA_CAR, EXTRA_CAR_MTP, UsbManager.EXTRA_DEVICE, UsbManager.EXTRA_ACCESSORY)) {
+                    val value = intent.extras?.get(key)
+                    append(" extraKey=[").append(key).append("]")
+                        .append(" extraValue=[").append(value).append("]")
+                        .append(" extraType=[").append(value?.javaClass?.name ?: "null").append("]")
                 }
             }
         }
@@ -80,6 +85,8 @@ class UsbEventReceiver : BroadcastReceiver() {
         private const val EXTRA_MTP = "mtp"
         private const val EXTRA_PTP = "ptp"
         private const val EXTRA_ADB = "adb"
+        private const val EXTRA_CAR = "car"
+        private const val EXTRA_CAR_MTP = "car,mtp"
         private const val TAG = "WelcomePlayerUsb"
         private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US)
     }
