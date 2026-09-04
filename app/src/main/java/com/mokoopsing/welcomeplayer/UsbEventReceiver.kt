@@ -16,15 +16,23 @@ class UsbEventReceiver : BroadcastReceiver() {
         val details = buildString {
             append(timestampFormat.format(Date()))
             append(" action=").append(intent.action)
-            append(" device=").append(device?.deviceName ?: "unknown")
-            device?.let {
-                append(" vendorId=").append(it.vendorId)
-                append(" productId=").append(it.productId)
-                append(" manufacturer=").append(it.manufacturerName ?: "unknown")
-                append(" product=").append(it.productName ?: "unknown")
-                append(" class=").append(it.deviceClass)
-                append(" subclass=").append(it.deviceSubclass)
-                append(" protocol=").append(it.deviceProtocol)
+            if (intent.action == ACTION_USB_STATE) {
+                append(" connected=").append(intent.getBooleanExtra(EXTRA_CONNECTED, false))
+                append(" configured=").append(intent.getBooleanExtra(EXTRA_CONFIGURED, false))
+                append(" mtp=").append(intent.getBooleanExtra(EXTRA_MTP, false))
+                append(" ptp=").append(intent.getBooleanExtra(EXTRA_PTP, false))
+                append(" adb=").append(intent.getBooleanExtra(EXTRA_ADB, false))
+            } else {
+                append(" device=").append(device?.deviceName ?: "unknown")
+                device?.let {
+                    append(" vendorId=").append(it.vendorId)
+                    append(" productId=").append(it.productId)
+                    append(" manufacturer=").append(it.manufacturerName ?: "unknown")
+                    append(" product=").append(it.productName ?: "unknown")
+                    append(" class=").append(it.deviceClass)
+                    append(" subclass=").append(it.deviceSubclass)
+                    append(" protocol=").append(it.deviceProtocol)
+                }
             }
         }
         Log.i(TAG, details)
@@ -43,9 +51,15 @@ class UsbEventReceiver : BroadcastReceiver() {
         else @Suppress("DEPRECATION") getParcelableExtra(name)
 
     companion object {
+        const val ACTION_USB_STATE = "android.hardware.usb.action.USB_STATE"
         const val ACTION_USB_LOG_UPDATED = "com.mokoopsing.welcomeplayer.USB_LOG_UPDATED"
         const val EXTRA_LOG_LINE = "log_line"
         const val LOG_FILE = "usb-events.log"
+        private const val EXTRA_CONNECTED = "connected"
+        private const val EXTRA_CONFIGURED = "configured"
+        private const val EXTRA_MTP = "mtp"
+        private const val EXTRA_PTP = "ptp"
+        private const val EXTRA_ADB = "adb"
         private const val TAG = "WelcomePlayerUsb"
         private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US)
     }
