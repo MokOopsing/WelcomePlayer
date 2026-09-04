@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.widget.LinearLayout
+import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -26,6 +27,7 @@ class MainActivity : Activity() {
 
         logTextView = TextView(this).apply {
             textSize = 14f
+            textIsSelectable = true
             setPadding(24, 16, 24, 16)
             text = readExistingLogs()
         }
@@ -37,9 +39,14 @@ class MainActivity : Activity() {
             textSize = 20f
             setPadding(48, 48, 48, 24)
         }
+        val exportButton = Button(this).apply {
+            text = "导出 USB 日志"
+            setOnClickListener { exportLogs() }
+        }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(statusTextView)
+            addView(exportButton)
             addView(
                 logScrollView,
                 LinearLayout.LayoutParams(
@@ -88,5 +95,16 @@ class MainActivity : Activity() {
         openFileInput(UsbEventReceiver.LOG_FILE).bufferedReader().use { it.readText() }
     } catch (_: java.io.FileNotFoundException) {
         "暂无 USB 连接事件"
+    }
+
+    private fun exportLogs() {
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "WelcomePlayer USB 日志")
+                putExtra(Intent.EXTRA_TEXT, logTextView.text.toString())
+            },
+            "导出 USB 日志"
+        ))
     }
 }
