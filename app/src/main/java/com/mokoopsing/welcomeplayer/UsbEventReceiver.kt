@@ -66,7 +66,7 @@ class UsbEventReceiver : BroadcastReceiver() {
                 .putExtra(EXTRA_LOG_LINE, details)
         )
         if (isCarLifeConnection(intent)) {
-            Log.i(TAG, "CarLife connection event matched; starting playback")
+            Log.i(TAG, "CarLife connection event matched; playback scheduled in 5 seconds")
             val playbackIntent = Intent(context, WelcomePlaybackService::class.java)
                 .setAction(WelcomePlaybackService.ACTION_PLAY_CARLIFE)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

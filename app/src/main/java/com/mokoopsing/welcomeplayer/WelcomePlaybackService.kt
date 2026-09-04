@@ -10,6 +10,8 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
@@ -20,6 +22,8 @@ import java.io.File
 
 class WelcomePlaybackService : Service() {
     private var player: ExoPlayer? = null
+    private val playbackHandler = Handler(Looper.getMainLooper())
+    private val delayedCarLifePlayback = Runnable { startPlayback() }
     private val usbStateReceiver = UsbEventReceiver()
 
     override fun onCreate() {
@@ -97,13 +101,19 @@ class WelcomePlaybackService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        playbackHandler.removeCallbacks(delayedCarLifePlayback)
         player?.release()
         player = null
-        startPlayback()
+        if (intent?.action == ACTION_PLAY_CARLIFE) {
+            playbackHandler.postDelayed(delayedCarLifePlayback, CARLIFE_PLAYBACK_DELAY_MS)
+        } else {
+            startPlayback()
+        }
         return START_STICKY
     }
 
     override fun onDestroy() {
+        playbackHandler.removeCallbacks(delayedCarLifePlayback)
         unregisterReceiver(usbStateReceiver)
         player?.release()
         player = null
@@ -112,6 +122,7 @@ class WelcomePlaybackService : Service() {
 
     companion object {
         const val ACTION_PLAY_CARLIFE = "com.mokoopsing.welcomeplayer.PLAY_CARLIFE"
+        private const val CARLIFE_PLAYBACK_DELAY_MS = 5_000L
         private const val CHANNEL_ID = "welcomeplayer_playback"
         private const val NOTIFICATION_ID = 1001
         private val SUPPORTED_EXTENSIONS = setOf("mp3", "wav", "m4a", "aac", "ogg", "flac")
