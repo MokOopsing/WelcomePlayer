@@ -79,9 +79,11 @@ class UsbEventReceiver : BroadcastReceiver() {
 
     private fun isCarLifeConnection(intent: Intent): Boolean =
         intent.action == ACTION_USB_STATE &&
-            intent.getBooleanExtra(EXTRA_CONNECTED, false) &&
             intent.getBooleanExtra(EXTRA_CONFIGURED, false) &&
-            intent.getBooleanExtra(EXTRA_CAR_MTP, false)
+            intent.hasExtra(EXTRA_CAR_MTP) &&
+            !intent.getBooleanExtra(EXTRA_CAR_MTP, true) &&
+            intent.hasExtra(EXTRA_WHITELIST_DEVICE) &&
+            !intent.getBooleanExtra(EXTRA_WHITELIST_DEVICE, true)
 
     private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
         if (android.os.Build.VERSION.SDK_INT >= 33) getParcelableExtra(name, T::class.java)
@@ -103,6 +105,7 @@ class UsbEventReceiver : BroadcastReceiver() {
         private const val EXTRA_ADB = "adb"
         private const val EXTRA_CAR = "car"
         private const val EXTRA_CAR_MTP = "car,mtp"
+        private const val EXTRA_WHITELIST_DEVICE = "is_connected_whitelist_device"
         private const val TAG = "WelcomePlayerUsb"
         private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US)
     }
