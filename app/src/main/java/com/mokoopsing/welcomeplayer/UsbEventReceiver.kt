@@ -31,6 +31,11 @@ class UsbEventReceiver : BroadcastReceiver() {
         context.openFileOutput(LOG_FILE, Context.MODE_APPEND).bufferedWriter().use {
             it.appendLine(details)
         }
+        context.sendBroadcast(
+            Intent(ACTION_USB_LOG_UPDATED)
+                .setPackage(context.packageName)
+                .putExtra(EXTRA_LOG_LINE, details)
+        )
     }
 
     private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
@@ -38,8 +43,10 @@ class UsbEventReceiver : BroadcastReceiver() {
         else @Suppress("DEPRECATION") getParcelableExtra(name)
 
     companion object {
+        const val ACTION_USB_LOG_UPDATED = "com.mokoopsing.welcomeplayer.USB_LOG_UPDATED"
+        const val EXTRA_LOG_LINE = "log_line"
+        const val LOG_FILE = "usb-events.log"
         private const val TAG = "WelcomePlayerUsb"
-        private const val LOG_FILE = "usb-events.log"
         private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US)
     }
 }
