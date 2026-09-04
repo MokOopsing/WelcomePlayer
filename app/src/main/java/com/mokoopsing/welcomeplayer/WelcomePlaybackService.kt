@@ -5,11 +5,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.IntentFilter
 import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -18,11 +20,18 @@ import java.io.File
 
 class WelcomePlaybackService : Service() {
     private var player: ExoPlayer? = null
+    private val usbStateReceiver = UsbEventReceiver()
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
+        ContextCompat.registerReceiver(
+            this,
+            usbStateReceiver,
+            IntentFilter(UsbEventReceiver.ACTION_USB_STATE),
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
 
     private fun startPlayback() {
@@ -89,6 +98,7 @@ class WelcomePlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(usbStateReceiver)
         player?.release()
         player = null
         super.onDestroy()
