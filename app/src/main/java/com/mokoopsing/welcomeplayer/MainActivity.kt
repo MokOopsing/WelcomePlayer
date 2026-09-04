@@ -1,12 +1,26 @@
 package com.mokoopsing.welcomeplayer
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 
 class MainActivity : Activity() {
+    private lateinit var logTextView: TextView
+
+    private val usbLogReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            intent.getStringExtra(UsbEventReceiver.EXTRA_LOG_LINE)?.let { appendLog(it) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -26,11 +40,14 @@ class MainActivity : Activity() {
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(statusTextView)
-            addView(logScrollView, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            ))
+            addView(
+                logScrollView,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+            )
         })
 
         val serviceIntent = Intent(this, WelcomePlaybackService::class.java)
@@ -49,7 +66,9 @@ class MainActivity : Activity() {
             IntentFilter(UsbEventReceiver.ACTION_USB_LOG_UPDATED),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        logTextView.post { logTextView.parent?.let { (it as ScrollView).fullScroll(ScrollView.FOCUS_DOWN) } }
+        logTextView.post {
+            (logTextView.parent as? ScrollView)?.fullScroll(ScrollView.FOCUS_DOWN)
+        }
     }
 
     override fun onStop() {
@@ -60,21 +79,14 @@ class MainActivity : Activity() {
     private fun appendLog(line: String) {
         if (logTextView.text.isNotEmpty()) logTextView.append("\n")
         logTextView.append(line)
-        logTextView.post { (logTextView.parent as? ScrollView)?.fullScroll(ScrollView.FOCUS_DOWN) }
+        logTextView.post {
+            (logTextView.parent as? ScrollView)?.fullScroll(ScrollView.FOCUS_DOWN)
+        }
     }
 
     private fun readExistingLogs(): String = try {
         openFileInput(UsbEventReceiver.LOG_FILE).bufferedReader().use { it.readText() }
     } catch (_: java.io.FileNotFoundException) {
         "暂无 USB 连接事件"
-    }
-}
-
-        val serviceIntent = Intent(this, WelcomePlaybackService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
     }
 }
