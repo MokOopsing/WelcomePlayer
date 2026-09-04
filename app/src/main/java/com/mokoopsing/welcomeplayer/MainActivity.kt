@@ -27,7 +27,7 @@ class MainActivity : Activity() {
 
         logTextView = TextView(this).apply {
             textSize = 14f
-            textIsSelectable = true
+            setTextIsSelectable(true)
             setPadding(24, 16, 24, 16)
             text = readExistingLogs()
         }
