@@ -29,7 +29,13 @@ class WelcomePlaybackService : Service() {
         ContextCompat.registerReceiver(
             this,
             usbStateReceiver,
-            IntentFilter(UsbEventReceiver.ACTION_USB_STATE),
+            IntentFilter().apply {
+                addAction(UsbEventReceiver.ACTION_USB_STATE)
+                addAction(UsbEventReceiver.ACTION_USB_DEVICE_ATTACHED)
+                addAction(UsbEventReceiver.ACTION_USB_DEVICE_DETACHED)
+                addAction(UsbEventReceiver.ACTION_USB_ACCESSORY_ATTACHED)
+                addAction(UsbEventReceiver.ACTION_USB_ACCESSORY_DETACHED)
+            },
             ContextCompat.RECEIVER_EXPORTED
         )
     }
