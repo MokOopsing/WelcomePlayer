@@ -111,6 +111,7 @@ class WelcomePlaybackService : Service() {
     }
 
     companion object {
+        const val ACTION_PLAY_CARLIFE = "com.mokoopsing.welcomeplayer.PLAY_CARLIFE"
         private const val CHANNEL_ID = "welcomeplayer_playback"
         private const val NOTIFICATION_ID = 1001
         private val SUPPORTED_EXTENSIONS = setOf("mp3", "wav", "m4a", "aac", "ogg", "flac")

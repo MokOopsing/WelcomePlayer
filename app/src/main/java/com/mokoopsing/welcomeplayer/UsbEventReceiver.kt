@@ -65,7 +65,23 @@ class UsbEventReceiver : BroadcastReceiver() {
                 .setPackage(context.packageName)
                 .putExtra(EXTRA_LOG_LINE, details)
         )
+        if (isCarLifeConnection(intent)) {
+            Log.i(TAG, "CarLife connection event matched; starting playback")
+            val playbackIntent = Intent(context, WelcomePlaybackService::class.java)
+                .setAction(WelcomePlaybackService.ACTION_PLAY_CARLIFE)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(playbackIntent)
+            } else {
+                context.startService(playbackIntent)
+            }
+        }
     }
+
+    private fun isCarLifeConnection(intent: Intent): Boolean =
+        intent.action == ACTION_USB_STATE &&
+            intent.getBooleanExtra(EXTRA_CONNECTED, false) &&
+            intent.getBooleanExtra(EXTRA_CONFIGURED, false) &&
+            intent.getBooleanExtra(EXTRA_CAR_MTP, false)
 
     private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
         if (android.os.Build.VERSION.SDK_INT >= 33) getParcelableExtra(name, T::class.java)
