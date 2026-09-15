@@ -79,6 +79,13 @@ class WelcomePlaybackService : Service() {
                         )
                     }
                 }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) {
+                        progressHandler.removeCallbacks(progressRunnable)
+                        progressHandler.post(progressRunnable)
+                    }
+                }
             })
             exo.prepare()
             exo.play()

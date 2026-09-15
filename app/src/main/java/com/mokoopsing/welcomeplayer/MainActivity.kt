@@ -184,6 +184,9 @@ class MainActivity : AppCompatActivity() {
         if (intent.hasExtra(WelcomePlaybackService.EXTRA_AUTOMATIC)) {
             val automatic = intent.getBooleanExtra(WelcomePlaybackService.EXTRA_AUTOMATIC, false)
             playButton.isEnabled = !automatic
+            if (!intent.hasExtra(WelcomePlaybackService.EXTRA_ERROR)) {
+                progressBar.visibility = View.VISIBLE
+            }
         }
         if (intent.getBooleanExtra(WelcomePlaybackService.EXTRA_COMPLETED, false)) {
             hasManualPlaybackStarted = false
