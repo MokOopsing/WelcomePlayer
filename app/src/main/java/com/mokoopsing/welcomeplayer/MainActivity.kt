@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : Activity() {
     private lateinit var logTextView: TextView
+    private lateinit var statusTextView: TextView
     private lateinit var playButton: PlayControlView
     private lateinit var progressBar: SeekBar
     private var isManualPlaying = false
@@ -28,7 +29,12 @@ class MainActivity : Activity() {
 
     private val usbLogReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            intent.getStringExtra(UsbEventReceiver.EXTRA_LOG_LINE)?.let { appendLog(it) }
+            intent.getStringExtra(UsbEventReceiver.EXTRA_LOG_LINE)?.let {
+                appendLog(it)
+                if (it.contains("CarLife connection event matched")) {
+                    statusTextView.text = "声启旅程\n\n已连接车机\n\nUSB 连接事件"
+                }
+            }
             if (intent.action == WelcomePlaybackService.ACTION_PLAYBACK_PROGRESS) {
                 updatePlaybackProgress(intent)
             }
@@ -47,10 +53,10 @@ class MainActivity : Activity() {
         val logScrollView = ScrollView(this).apply {
             addView(logTextView)
         }
-        val statusTextView = TextView(this).apply {
+        statusTextView = TextView(this).apply {
             text = "声启旅程\n\n等待车机连接…\n\nUSB 连接事件"
             textSize = 20f
-            setPadding(48, 48, 48, 24)
+            setPadding(48, 88, 48, 24)
         }
         val exportButton = Button(this).apply {
             text = "导出 USB 日志"
@@ -171,6 +177,10 @@ class MainActivity : Activity() {
                 isManualPlaying = false
                 playButton.isPlaying = false
             }
+        }
+        if (intent.getBooleanExtra(WelcomePlaybackService.EXTRA_COMPLETED, false)) {
+            hasManualPlaybackStarted = false
+            isManualPlaying = false
         }
         val duration = intent.getLongExtra(WelcomePlaybackService.EXTRA_DURATION, 0L)
         val position = intent.getLongExtra(WelcomePlaybackService.EXTRA_POSITION, 0L)

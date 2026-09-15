@@ -77,7 +77,13 @@ class WelcomePlaybackService : Service() {
             exo.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_ENDED) {
-                        sendPlaybackProgress(false, exo.duration, exo.duration, automatic = false)
+                        sendPlaybackProgress(
+                            false,
+                            exo.duration,
+                            exo.duration,
+                            automatic = false,
+                            completed = true
+                        )
                     }
                 }
             })
@@ -160,6 +166,7 @@ class WelcomePlaybackService : Service() {
         const val EXTRA_AUTOMATIC = "automatic"
         const val EXTRA_POSITION = "position"
         const val EXTRA_DURATION = "duration"
+        const val EXTRA_COMPLETED = "completed"
         private const val CHANNEL_ID = "welcomeplayer_playback"
         private const val NOTIFICATION_ID = 1001
         private const val PROGRESS_INTERVAL_MS = 500L
@@ -170,12 +177,14 @@ class WelcomePlaybackService : Service() {
         playing: Boolean,
         position: Long,
         duration: Long,
-        automatic: Boolean? = null
+        automatic: Boolean? = null,
+        completed: Boolean = false
     ) {
         val progressIntent = Intent(ACTION_PLAYBACK_PROGRESS).setPackage(packageName)
             .putExtra(EXTRA_PLAYING, playing)
             .putExtra(EXTRA_POSITION, position)
             .putExtra(EXTRA_DURATION, duration)
+            .putExtra(EXTRA_COMPLETED, completed)
         automatic?.let { progressIntent.putExtra(EXTRA_AUTOMATIC, it) }
         sendBroadcast(progressIntent)
     }
