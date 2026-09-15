@@ -1,60 +1,71 @@
 package com.mokoopsing.welcomeplayer
 
-import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
-import android.widget.LinearLayout
+import android.view.Gravity
+import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
-import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
     private lateinit var logTextView: TextView
     private lateinit var statusTextView: TextView
     private lateinit var playButton: PlayControlView
     private lateinit var progressBar: SeekBar
     private var isManualPlaying = false
     private var hasManualPlaybackStarted = false
+    private val logLines = ArrayDeque<String>()
 
     private val usbLogReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            intent.getStringExtra(UsbEventReceiver.EXTRA_LOG_LINE)?.let {
-                appendLog(it)
-                if (it.contains("CarLife connection event matched")) {
-                    statusTextView.text = "声启旅程\n\n已连接车机\n\nUSB 连接事件"
-                }
-            }
-            if (intent.action == WelcomePlaybackService.ACTION_PLAYBACK_PROGRESS) {
-                updatePlaybackProgress(intent)
+            when (intent.action) {
+                UsbEventReceiver.ACTION_USB_LOG_UPDATED ->
+                    intent.getStringExtra(UsbEventReceiver.EXTRA_LOG_LINE)?.let { appendLog(it) }
+                UsbEventReceiver.ACTION_CARLIFE_CONNECTED ->
+                    statusTextView.text = STATUS_CONNECTED
+                WelcomePlaybackService.ACTION_PLAYBACK_PROGRESS ->
+                    updatePlaybackProgress(intent)
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        buildContentView()
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, WelcomePlaybackService::class.java)
+        )
+    }
 
+    private fun buildContentView() {
+        loadLogLines()
         logTextView = TextView(this).apply {
             textSize = 14f
             setTextIsSelectable(true)
             setPadding(24, 16, 24, 16)
-            text = readExistingLogs()
+            text = logLines.joinToString("\n")
         }
         val logScrollView = ScrollView(this).apply {
             addView(logTextView)
         }
         statusTextView = TextView(this).apply {
-            text = "声启旅程\n\n等待车机连接…\n\nUSB 连接事件"
+            text = STATUS_WAITING
             textSize = 20f
             setPadding(48, 88, 48, 24)
         }
@@ -72,12 +83,12 @@ class MainActivity : Activity() {
         }
         progressBar = SeekBar(this).apply {
             max = 1000
-            visibility = android.view.View.GONE
+            visibility = View.GONE
             isEnabled = false
         }
         val playbackControls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            gravity = Gravity.CENTER_HORIZONTAL
             addView(progressBar, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -106,22 +117,13 @@ class MainActivity : Activity() {
                 )
             )
         })
-
-        val serviceIntent = Intent(this, WelcomePlaybackService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
     }
 
     private fun startPlayback(action: String) {
-        val intent = Intent(this, WelcomePlaybackService::class.java).setAction(action)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, WelcomePlaybackService::class.java).setAction(action)
+        )
     }
 
     override fun onStart() {
@@ -131,13 +133,12 @@ class MainActivity : Activity() {
             usbLogReceiver,
             IntentFilter().apply {
                 addAction(UsbEventReceiver.ACTION_USB_LOG_UPDATED)
+                addAction(UsbEventReceiver.ACTION_CARLIFE_CONNECTED)
                 addAction(WelcomePlaybackService.ACTION_PLAYBACK_PROGRESS)
             },
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        logTextView.post {
-            (logTextView.parent as? ScrollView)?.fullScroll(ScrollView.FOCUS_DOWN)
-        }
+        scrollLogToBottom()
     }
 
     override fun onStop() {
@@ -146,49 +147,62 @@ class MainActivity : Activity() {
     }
 
     private fun appendLog(line: String) {
-        if (logTextView.text.isNotEmpty()) logTextView.append("\n")
-        logTextView.append(line)
+        logLines.addLast(line)
+        while (logLines.size > MAX_LOG_LINES) logLines.removeFirst()
+        logTextView.text = logLines.joinToString("\n")
+        scrollLogToBottom()
+    }
+
+    private fun scrollLogToBottom() {
         logTextView.post {
             (logTextView.parent as? ScrollView)?.fullScroll(ScrollView.FOCUS_DOWN)
         }
     }
 
     private fun toggleManualPlayback() {
-        val action = if (isManualPlaying) {
-            WelcomePlaybackService.ACTION_PAUSE
-        } else if (hasManualPlaybackStarted) {
-            WelcomePlaybackService.ACTION_RESUME
-        } else {
-            WelcomePlaybackService.ACTION_PLAY_MANUAL
+        val action = when {
+            isManualPlaying -> WelcomePlaybackService.ACTION_PAUSE
+            hasManualPlaybackStarted -> WelcomePlaybackService.ACTION_RESUME
+            else -> WelcomePlaybackService.ACTION_PLAY_MANUAL
         }
         startPlayback(action)
         hasManualPlaybackStarted = true
-        isManualPlaying = !isManualPlaying
-        playButton.isPlaying = isManualPlaying
-        progressBar.visibility = android.view.View.VISIBLE
+        progressBar.visibility = View.VISIBLE
     }
 
     private fun updatePlaybackProgress(intent: Intent) {
+        val error = intent.getStringExtra(WelcomePlaybackService.EXTRA_ERROR)
+        if (error != null) {
+            hasManualPlaybackStarted = false
+            setPlayingState(false)
+            playButton.isEnabled = true
+            progressBar.visibility = View.GONE
+            progressBar.progress = 0
+            statusTextView.text = "声启旅程\n\n$error\n\nUSB 连接事件"
+            return
+        }
         if (intent.hasExtra(WelcomePlaybackService.EXTRA_AUTOMATIC)) {
             val automatic = intent.getBooleanExtra(WelcomePlaybackService.EXTRA_AUTOMATIC, false)
             playButton.isEnabled = !automatic
-            progressBar.visibility = android.view.View.VISIBLE
-            if (!automatic) {
-                isManualPlaying = false
-                playButton.isPlaying = false
-            }
         }
         if (intent.getBooleanExtra(WelcomePlaybackService.EXTRA_COMPLETED, false)) {
             hasManualPlaybackStarted = false
-            isManualPlaying = false
+            setPlayingState(false)
+            playButton.isEnabled = true
+            progressBar.visibility = View.GONE
+            progressBar.progress = 0
         }
         val duration = intent.getLongExtra(WelcomePlaybackService.EXTRA_DURATION, 0L)
         val position = intent.getLongExtra(WelcomePlaybackService.EXTRA_POSITION, 0L)
         if (duration > 0L) {
             progressBar.progress = ((position * 1000L) / duration).toInt().coerceIn(0, 1000)
         }
-        isManualPlaying = intent.getBooleanExtra(WelcomePlaybackService.EXTRA_PLAYING, false)
-        playButton.isPlaying = isManualPlaying
+        setPlayingState(intent.getBooleanExtra(WelcomePlaybackService.EXTRA_PLAYING, false))
+    }
+
+    private fun setPlayingState(playing: Boolean) {
+        if (isManualPlaying != playing) isManualPlaying = playing
+        if (playButton.isPlaying != playing) playButton.isPlaying = playing
     }
 
     private fun Int.dp(): Int = (this * resources.displayMetrics.density).toInt()
@@ -196,6 +210,7 @@ class MainActivity : Activity() {
     private class PlayControlView(context: Context) : View(context) {
         private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var playIconPath: Path? = null
         var isPlaying: Boolean = false
             set(value) {
                 field = value
@@ -207,6 +222,16 @@ class MainActivity : Activity() {
             circlePaint.color = Color.rgb(35, 35, 35)
             iconPaint.color = Color.WHITE
             iconPaint.style = Paint.Style.FILL
+        }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            playIconPath = Path().apply {
+                moveTo(w * 0.38f, h * 0.31f)
+                lineTo(w * 0.70f, h * 0.50f)
+                lineTo(w * 0.38f, h * 0.69f)
+                close()
+            }
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -239,36 +264,56 @@ class MainActivity : Activity() {
                     iconPaint
                 )
             } else {
-                val triangle = Path().apply {
-                    moveTo(centerX - width * 0.12f, centerY - height * 0.19f)
-                    lineTo(centerX + width * 0.20f, centerY)
-                    lineTo(centerX - width * 0.12f, centerY + height * 0.19f)
-                    close()
-                }
-                canvas.drawPath(triangle, iconPaint)
+                playIconPath?.let { canvas.drawPath(it, iconPaint) }
             }
         }
     }
 
-    private fun readExistingLogs(): String = try {
-        openFileInput(UsbEventReceiver.LOG_FILE).bufferedReader().use { it.readText() }
-    } catch (_: java.io.FileNotFoundException) {
-        "暂无 USB 连接事件"
+    private fun loadLogLines() {
+        logLines.clear()
+        try {
+            openFileInput(UsbEventReceiver.LOG_FILE).bufferedReader().useLines { lines ->
+                lines.forEach {
+                    logLines.addLast(it)
+                    while (logLines.size > MAX_LOG_LINES) logLines.removeFirst()
+                }
+            }
+        } catch (_: java.io.FileNotFoundException) {
+            logLines.addLast("暂无 USB 连接事件")
+        }
+        if (logLines.isEmpty()) logLines.addLast("暂无 USB 连接事件")
     }
 
     private fun exportLogs() {
-        startActivity(Intent.createChooser(
+        val logFile = File(filesDir, UsbEventReceiver.LOG_FILE)
+        val shareIntent = if (logFile.exists()) {
+            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", logFile)
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "声启旅程 USB 日志")
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri(null, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, "声启旅程 USB 日志")
                 putExtra(Intent.EXTRA_TEXT, logTextView.text.toString())
-            },
-            "导出声启旅程 USB 日志"
-        ))
+            }
+        }
+        startActivity(Intent.createChooser(shareIntent, "导出声启旅程 USB 日志"))
     }
 
     private fun clearLogs() {
         deleteFile(UsbEventReceiver.LOG_FILE)
-        logTextView.text = "暂无 USB 连接事件"
+        loadLogLines()
+        logTextView.text = logLines.joinToString("\n")
+    }
+
+    private companion object {
+        const val MAX_LOG_LINES = 500
+        const val STATUS_WAITING = "声启旅程\n\n等待车机连接…\n\nUSB 连接事件"
+        const val STATUS_CONNECTED = "声启旅程\n\n已连接车机\n\nUSB 连接事件"
     }
 }

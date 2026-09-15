@@ -7,6 +7,7 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,13 +63,12 @@ class UsbEventReceiver : BroadcastReceiver() {
             val matchedLog = "CarLife connection event matched; starting playback"
             Log.i(TAG, matchedLog)
             publishLog(context, matchedLog)
+            context.sendBroadcast(
+                Intent(ACTION_CARLIFE_CONNECTED).setPackage(context.packageName)
+            )
             val playbackIntent = Intent(context, WelcomePlaybackService::class.java)
                 .setAction(WelcomePlaybackService.ACTION_PLAY_CARLIFE)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.startForegroundService(playbackIntent)
-            } else {
-                context.startService(playbackIntent)
-            }
+            ContextCompat.startForegroundService(context, playbackIntent)
         } else {
             val reason = "USB event did not match CarLife: " +
                 "action=${intent.action}, " +
@@ -110,6 +110,7 @@ class UsbEventReceiver : BroadcastReceiver() {
         const val ACTION_USB_ACCESSORY_ATTACHED = "android.hardware.usb.action.USB_ACCESSORY_ATTACHED"
         const val ACTION_USB_ACCESSORY_DETACHED = "android.hardware.usb.action.USB_ACCESSORY_DETACHED"
         const val ACTION_USB_LOG_UPDATED = "com.mokoopsing.welcomeplayer.USB_LOG_UPDATED"
+        const val ACTION_CARLIFE_CONNECTED = "com.mokoopsing.welcomeplayer.CARLIFE_CONNECTED"
         const val EXTRA_LOG_LINE = "log_line"
         const val LOG_FILE = "usb-events.log"
         private const val EXTRA_CONNECTED = "connected"

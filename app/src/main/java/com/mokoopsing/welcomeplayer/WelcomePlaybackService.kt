@@ -5,17 +5,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.IntentFilter
 import android.content.Intent
 import android.os.Build
 import android.os.Environment
-import android.os.IBinder
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.media3.common.Player
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.SilenceMediaSource
@@ -28,27 +26,17 @@ class WelcomePlaybackService : Service() {
         override fun run() {
             player?.let { exo ->
                 sendPlaybackProgress(exo.isPlaying, exo.currentPosition, exo.duration)
+                if (exo.isPlaying) {
+                    progressHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
+                }
             }
-            progressHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
         }
     }
-    private val usbStateReceiver = UsbEventReceiver()
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
-        ContextCompat.registerReceiver(
-            this,
-            usbStateReceiver,
-            IntentFilter().apply {
-                addAction(UsbEventReceiver.ACTION_USB_DEVICE_ATTACHED)
-                addAction(UsbEventReceiver.ACTION_USB_DEVICE_DETACHED)
-                addAction(UsbEventReceiver.ACTION_USB_ACCESSORY_ATTACHED)
-                addAction(UsbEventReceiver.ACTION_USB_ACCESSORY_DETACHED)
-            },
-            ContextCompat.RECEIVER_EXPORTED
-        )
     }
 
     private fun startPlayback() {
@@ -63,7 +51,12 @@ class WelcomePlaybackService : Service() {
             ?.filter { it.isFile && it.extension.lowercase() in SUPPORTED_EXTENSIONS }
             ?.sortedBy { it.name.lowercase() }
             ?: emptyList()
-        if (files.isEmpty()) return
+        if (files.isEmpty()) {
+            sendPlaybackError(
+                if (dir == null) "未找到音频目录" else "音频目录为空：${dir.absolutePath}"
+            )
+            return
+        }
 
         player = ExoPlayer.Builder(this).build().also { exo ->
             val mediaSourceFactory = DefaultMediaSourceFactory(this)
@@ -126,14 +119,12 @@ class WelcomePlaybackService : Service() {
         when (intent?.action) {
             ACTION_PLAY_CARLIFE -> {
                 sendPlaybackProgress(false, 0L, 0L, automatic = true)
-                player?.release()
-                player = null
+                releasePlayer()
                 startPlayback()
             }
             ACTION_PLAY_MANUAL -> {
                 sendPlaybackProgress(false, 0L, 0L, automatic = false)
-                player?.release()
-                player = null
+                releasePlayer()
                 startPlayback()
             }
             ACTION_PAUSE -> {
@@ -142,17 +133,18 @@ class WelcomePlaybackService : Service() {
             }
             ACTION_RESUME -> {
                 player?.play()
-                player?.let { sendPlaybackProgress(true, it.currentPosition, it.duration) }
+                player?.let {
+                    sendPlaybackProgress(true, it.currentPosition, it.duration)
+                    progressHandler.removeCallbacks(progressRunnable)
+                    progressHandler.post(progressRunnable)
+                }
             }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        progressHandler.removeCallbacks(progressRunnable)
-        unregisterReceiver(usbStateReceiver)
-        player?.release()
-        player = null
+        releasePlayer()
         super.onDestroy()
     }
 
@@ -167,10 +159,17 @@ class WelcomePlaybackService : Service() {
         const val EXTRA_POSITION = "position"
         const val EXTRA_DURATION = "duration"
         const val EXTRA_COMPLETED = "completed"
+        const val EXTRA_ERROR = "error"
         private const val CHANNEL_ID = "welcomeplayer_playback"
         private const val NOTIFICATION_ID = 1001
         private const val PROGRESS_INTERVAL_MS = 500L
         private val SUPPORTED_EXTENSIONS = setOf("mp3", "wav", "m4a", "aac", "ogg", "flac")
+    }
+
+    private fun releasePlayer() {
+        progressHandler.removeCallbacks(progressRunnable)
+        player?.release()
+        player = null
     }
 
     private fun sendPlaybackProgress(
@@ -187,5 +186,16 @@ class WelcomePlaybackService : Service() {
             .putExtra(EXTRA_COMPLETED, completed)
         automatic?.let { progressIntent.putExtra(EXTRA_AUTOMATIC, it) }
         sendBroadcast(progressIntent)
+    }
+
+    private fun sendPlaybackError(message: String) {
+        sendBroadcast(
+            Intent(ACTION_PLAYBACK_PROGRESS).setPackage(packageName)
+                .putExtra(EXTRA_PLAYING, false)
+                .putExtra(EXTRA_POSITION, 0L)
+                .putExtra(EXTRA_DURATION, 0L)
+                .putExtra(EXTRA_COMPLETED, false)
+                .putExtra(EXTRA_ERROR, message)
+        )
     }
 }
