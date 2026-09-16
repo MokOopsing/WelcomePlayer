@@ -138,7 +138,16 @@ class MainActivity : AppCompatActivity() {
             },
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        refreshConnectionStatus()
         scrollLogToBottom()
+    }
+
+    private fun refreshConnectionStatus() {
+        statusTextView.text = if (UsbEventReceiver.isCarLifeCurrentlyConnected(this)) {
+            STATUS_CONNECTED
+        } else {
+            STATUS_WAITING
+        }
     }
 
     override fun onStop() {

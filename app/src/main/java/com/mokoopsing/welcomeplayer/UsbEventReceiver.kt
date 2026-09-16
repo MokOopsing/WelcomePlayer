@@ -3,6 +3,7 @@ package com.mokoopsing.welcomeplayer
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
@@ -93,12 +94,6 @@ class UsbEventReceiver : BroadcastReceiver() {
         )
     }
 
-    private fun isCarLifeConnection(intent: Intent): Boolean =
-        intent.action == ACTION_USB_STATE &&
-            intent.getBooleanExtra(EXTRA_CONFIGURED, false) &&
-            intent.hasExtra(EXTRA_WHITELIST_DEVICE) &&
-            !intent.getBooleanExtra(EXTRA_WHITELIST_DEVICE, true)
-
     private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? =
         if (android.os.Build.VERSION.SDK_INT >= 33) getParcelableExtra(name, T::class.java)
         else @Suppress("DEPRECATION") getParcelableExtra(name)
@@ -113,6 +108,18 @@ class UsbEventReceiver : BroadcastReceiver() {
         const val ACTION_CARLIFE_CONNECTED = "com.mokoopsing.welcomeplayer.CARLIFE_CONNECTED"
         const val EXTRA_LOG_LINE = "log_line"
         const val LOG_FILE = "usb-events.log"
+
+        fun isCarLifeCurrentlyConnected(context: Context): Boolean {
+            val sticky = context.registerReceiver(null, IntentFilter(ACTION_USB_STATE))
+            return sticky != null && isCarLifeConnection(sticky)
+        }
+
+        private fun isCarLifeConnection(intent: Intent): Boolean =
+            intent.action == ACTION_USB_STATE &&
+                intent.getBooleanExtra(EXTRA_CONFIGURED, false) &&
+                intent.hasExtra(EXTRA_WHITELIST_DEVICE) &&
+                !intent.getBooleanExtra(EXTRA_WHITELIST_DEVICE, true)
+
         private const val EXTRA_CONNECTED = "connected"
         private const val EXTRA_CONFIGURED = "configured"
         private const val EXTRA_MTP = "mtp"
